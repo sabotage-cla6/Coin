@@ -30,12 +30,6 @@ class SymbolInfo:
         self.mongo_client = MongoClient(SymbolInfo.DB_SERVER)
         self.db = self.mongo_client.COIN
 
-    def get_ticker(self):
-        path = SymbolInfo.TICKER_PATH.format(self.symbol)
-
-        response = requests.get(SymbolInfo.ENDPOINT + path)
-        self.db[self.symbol.gmo_name].insert_one(response.json()['data'][0])
-
     def save_chart(self):
         response = requests.get("https://bitcoin.dmm.com/trade_chart_rate_list/" + self.symbol.dmm_url_path)
         regex = re.compile(('<meta name="csrf-token" content="([^"]*)">'))
