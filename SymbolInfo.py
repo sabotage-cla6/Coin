@@ -14,6 +14,9 @@ class SymbolInfo:
     _DB_SERVER: str = 'mongodb://localhost:27017/'
     _DB_NAME: str = 'COIN'
 
+    _ENDPOINT: str = 'https://api.coin.z.com/public'
+    _TICKER_PATH: str = '/v1/ticker?symbol={}'
+
     _MONGO_CLIENT = pymongo.MongoClient(_DB_SERVER)
     _DB = _MONGO_CLIENT.COIN
 
@@ -27,8 +30,18 @@ class SymbolInfo:
         FX_BTC_JPY = ("BTC_JPY", "FX_BTC/JPY", "FX_BTC-JPY", "btc_jpy")
         FX_XRP_JPY = ("XRP_JPY", "FX_XRP/JPY", "FX_XRP-JPY", "xrp_jpy")
 
-    ENDPOINT: str = 'https://api.coin.z.com/public'
-    TICKER_PATH: str = '/v1/ticker?symbol={}'
+    class SymbolOHLC:
+
+        def __init__(self, d: str, o: str, h: str, l: str, c: str):
+            self.date: datetime = datetime.strptime(d, "%Y/%m/%d %H:%M")
+            self.open: float = float(o)
+            self.high: float = float(h)
+            self.low: float = float(l)
+            self.close: float = float(c)
+
+        def toDic(self) -> dict:
+            result: dict = {"d": self.date, "o": self.open, "h": self.high, "l": self.low, "c": self.close}
+            return result
 
     def __init__(self, symbol: SYMBOLS):
         self.symbol = symbol
@@ -42,18 +55,24 @@ class SymbolInfo:
         response = requests.post("https://bitcoin.dmm.com/api/get_realtime_chart", param)
 
         temp_data = response.json()["chart"][self.symbol.dmm_name]["ONE_MIN"]["BID"]
+        ohlc: list[SymbolInfo.SymbolOHLC] = \
+            [SymbolInfo.SymbolOHLC(d=x["d"], o=x["o"], h=x["h"], l=x["l"], c=x["c"]).toDic() for
+             x in temp_data]
 
         # prevent insert duplicated data.
         # use tmp collection. and select data need to insert.
-        max_date_registed = SymbolInfo._DB[self.symbol.name].find(projection={"d": 1}). \
-            sort("d", pymongo.DESCENDING).limit(1)[0]["d"]
+        inserted_max_date: datetime = datetime.min
+        if 0 < SymbolInfo._DB[self.symbol.name].count_documents({}):
+            max_date_record = SymbolInfo._DB[self.symbol.name].find(projection={"d": 1}). \
+                sort("d", pymongo.DESCENDING).limit(1)
+            inserted_max_date = max_date_record[0]["d"]
         tmp_collection_name: str = "tmp_{0}_{1}".format(self.symbol.name, time.time())
-        SymbolInfo._DB[tmp_collection_name].insert_many(temp_data)
-        find_temp_data = SymbolInfo._DB[tmp_collection_name].find({"d": {"$gt": max_date_registed}})
+        SymbolInfo._DB[tmp_collection_name].insert_many(ohlc)
+        find_temp_data = SymbolInfo._DB[tmp_collection_name].find({"d": {"$gt": inserted_max_date}})
         insert_data = [x for x in find_temp_data]
-        SymbolInfo._DB[self.symbol.name].insert_many(insert_data)
+        if 1 <= len(insert_data):
+            SymbolInfo._DB[self.symbol.name].insert_many(insert_data)
         SymbolInfo._DB[tmp_collection_name].drop()
-
 
 if __name__ == '__main__':
 
@@ -72,5 +91,6 @@ if __name__ == '__main__':
         # and, in case machine clock is little off, seconds set 10
         next_planned_time = datetime(now_time.year, now_time.month, now_time.day
                                      , now_time.hour, now_time.minute, 10)
-        next_planned_time = next_planned_time + timedelta(hours=1)
+        next_planned_time = next_planned_time + timedelta(minutes=1)
+        print("insert data on {}".format(now_time))
         time.sleep((next_planned_time - now_time).total_seconds());
