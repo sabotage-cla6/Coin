@@ -7,6 +7,11 @@ class AnalyzeSymbol:
 
     @classmethod
     def analyze(cls):
+        """
+        get correlation coefficient between BTC and XRP.
+        make XRP chart delay.
+        :return:
+        """
         print("interval\tcorrelation")
         for i in range(0, 60):
             xrp: SymbolInfo = SymbolInfo(SymbolInfo.SYMBOLS.FX_XRP_JPY)
@@ -22,6 +27,12 @@ class AnalyzeSymbol:
 
     @classmethod
     def analyze_diff(cls):
+        """
+        get correlation coefficient between BTC chart move and XRP chart move.
+        make XRP chart delay.
+        chart move means difference between price on previous minute and current price.
+        :return:
+        """
         print("interval\tcorrelation")
         for i in range(0, 50):
             xrp: SymbolInfo = SymbolInfo(SymbolInfo.SYMBOLS.FX_XRP_JPY)
