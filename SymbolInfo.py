@@ -33,15 +33,19 @@ class SymbolInfo:
     class SymbolOHLC:
 
         def __init__(self, d: str, o: str, h: str, l: str, c: str):
-            self.date: datetime = datetime.strptime(d, "%Y/%m/%d %H:%M")
+            self.date: datetime = d
             self.open: float = float(o)
             self.high: float = float(h)
             self.low: float = float(l)
             self.close: float = float(c)
 
-        def toDic(self) -> dict:
+        def to_dic(self) -> dict:
             result: dict = {"d": self.date, "o": self.open, "h": self.high, "l": self.low, "c": self.close}
             return result
+
+        def __str__(self):
+            return "d:{0}, O:{1}, H:{2}, L:{3}, C:{4}".format(str(self.date), self.open, self.high, self.low,
+                                                              self.close);
 
     def __init__(self, symbol: SYMBOLS):
         self.symbol = symbol
@@ -55,8 +59,8 @@ class SymbolInfo:
         response = requests.post("https://bitcoin.dmm.com/api/get_realtime_chart", param)
 
         temp_data = response.json()["chart"][self.symbol.dmm_name]["ONE_MIN"]["BID"]
-        ohlc: list[SymbolInfo.SymbolOHLC] = \
-            [SymbolInfo.SymbolOHLC(d=x["d"], o=x["o"], h=x["h"], l=x["l"], c=x["c"]).toDic() for
+        ohlc: list[dict] = \
+            [SymbolInfo.SymbolOHLC(d=x["d"], o=x["o"], h=x["h"], l=x["l"], c=x["c"]).to_dic() for
              x in temp_data]
 
         # prevent insert duplicated data.
@@ -73,6 +77,16 @@ class SymbolInfo:
         if 1 <= len(insert_data):
             SymbolInfo._DB[self.symbol.name].insert_many(insert_data)
         SymbolInfo._DB[tmp_collection_name].drop()
+
+    def find_ohlc_many(self, filter=None, skip=0, limit=0, sort=[("d", pymongo.DESCENDING)]):
+        result: list[SymbolInfo.SymbolOHLC] = {}
+
+        cursor = SymbolInfo._DB[self.symbol.name]. \
+            find(filter=filter, skip=skip, limit=limit, sort=sort)
+        result = [SymbolInfo.SymbolOHLC(d=x["d"], o=x["o"], h=x["h"], l=x["l"], c=x["c"]) for x in cursor]
+
+        return result
+
 
 if __name__ == '__main__':
 

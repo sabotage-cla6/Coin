@@ -2,6 +2,7 @@
   <dictionary name="vagrant">
     <words>
       <w>mongo</w>
+      <w>ohlc</w>
     </words>
   </dictionary>
 </component>
