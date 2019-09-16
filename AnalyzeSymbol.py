@@ -1,10 +1,54 @@
-from datetime import datetime
+import pandas
+from SymbolInfo import SymbolInfo
 import json
-from pymongo import MongoClient
 
 
-class SymbolInfo:
+class AnalyzeSymbol:
 
-    def analyze(self):
+    @classmethod
+    def analyze(cls):
+        print("interval\tcorrelation")
+        for i in range(0, 60):
+            xrp: SymbolInfo = SymbolInfo(SymbolInfo.SYMBOLS.FX_XRP_JPY)
+            btc: SymbolInfo = SymbolInfo(SymbolInfo.SYMBOLS.FX_BTC_JPY)
 
-        mon
+            d_xrp: list[SymbolInfo.symbol] = xrp.find_ohlc_many(skip=i, limit=2000)
+            d_btc: list[SymbolInfo.symbol] = btc.find_ohlc_many(limit=2000)
+
+            s_xrp = pandas.Series([xrp_ohlcs.close for xrp_ohlcs in d_xrp])
+            s_btc = pandas.Series([btc_ohlcs.close for btc_ohlcs in d_btc])
+
+            print("{}\t{}".format(i, s_btc.corr(s_xrp)))
+
+    @classmethod
+    def analyze_diff(cls):
+        print("interval\tcorrelation")
+        for i in range(0, 50):
+            xrp: SymbolInfo = SymbolInfo(SymbolInfo.SYMBOLS.FX_XRP_JPY)
+            btc: SymbolInfo = SymbolInfo(SymbolInfo.SYMBOLS.FX_BTC_JPY)
+
+            d_xrp: list[SymbolInfo.symbol] = xrp.find_ohlc_many(skip=i, limit=2000)
+            d_btc: list[SymbolInfo.symbol] = btc.find_ohlc_many(limit=2000)
+
+            l_xrp: list[float] = []
+            l_btc: list[float] = []
+
+            prev_price = 0
+            for xrp_price in [c_xrp.close for c_xrp in d_xrp]:
+                if prev_price != 0:
+                    l_xrp.append(xrp_price - prev_price)
+                prev_price = xrp_price
+
+            prev_price = 0
+            for btc_price in [c_btc.close for c_btc in d_btc]:
+                if prev_price != 0:
+                    l_btc.append(btc_price - prev_price)
+                prev_price = btc_price
+
+            s_xrp = pandas.Series(l_xrp)
+            s_btc = pandas.Series(l_btc)
+
+            print("{}\t{}".format(i, s_xrp.corr(s_btc)))
+
+
+AnalyzeSymbol.analyze_diff()
