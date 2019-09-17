@@ -32,12 +32,16 @@ class SymbolInfo:
 
     class SymbolOHLC:
 
-        def __init__(self, d: str, o: str, h: str, l: str, c: str):
-            self.date: datetime = datetime.strptime(d, "%Y/%m/%d %H:%M")
-            self.open: float = float(o)
-            self.high: float = float(h)
-            self.low: float = float(l)
-            self.close: float = float(c)
+        def __init__(self, date: datetime, open: float, high: float, low: float, close: float):
+            self.date: datetime = date
+            self.open: float = open
+            self.high: float = high
+            self.low: float = low
+            self.close: float = close
+
+        @classmethod
+        def create(cls, d: str, o: str, h: str, l: str, c: str):
+            return SymbolInfo.SymbolOHLC(datetime.strptime(d, "%Y/%m/%d %H:%M"), float(o), float(h), float(l), float(c))
 
         def to_dic(self) -> dict:
             result: dict = {"d": self.date, "o": self.open, "h": self.high, "l": self.low, "c": self.close}
@@ -60,8 +64,8 @@ class SymbolInfo:
 
         temp_data = response.json()["chart"][self.symbol.dmm_name]["ONE_MIN"]["BID"]
         ohlc: list[dict] = \
-            [SymbolInfo.SymbolOHLC(d=x["d"], o=x["o"], h=x["h"], l=x["l"], c=x["c"]).to_dic() for
-             x in temp_data]
+            [SymbolInfo.SymbolOHLC.create(x["d"], x["o"], x["h"], x["l"], x["c"]).to_dic()
+             for x in temp_data]
 
         # prevent insert duplicated data.
         # use tmp collection. and select data need to insert.
@@ -78,12 +82,15 @@ class SymbolInfo:
             SymbolInfo._DB[self.symbol.name].insert_many(insert_data)
         SymbolInfo._DB[tmp_collection_name].drop()
 
-    def find_ohlc_many(self, filter=None, skip=0, limit=0, sort=[("d", pymongo.DESCENDING)]):
+    def find_ohlc_many(self, filter=None, skip=0, limit=0, sort=None):
+        if sort is None:
+            sort = [("d", pymongo.DESCENDING)]
         result: list[SymbolInfo.SymbolOHLC] = {}
 
         cursor = SymbolInfo._DB[self.symbol.name]. \
             find(filter=filter, skip=skip, limit=limit, sort=sort)
-        result = [SymbolInfo.SymbolOHLC(d=x["d"], o=x["o"], h=x["h"], l=x["l"], c=x["c"]) for x in cursor]
+        result = [SymbolInfo.SymbolOHLC(date=x["d"], open=x["o"], high=x["h"], low=x["l"], close=x["c"]) for x in
+                  cursor]
 
         return result
 
