@@ -33,7 +33,7 @@ class SymbolInfo:
     class SymbolOHLC:
 
         def __init__(self, d: str, o: str, h: str, l: str, c: str):
-            self.date: datetime = d
+            self.date: datetime = datetime.strptime(d, "%Y/%m/%d %H:%M")
             self.open: float = float(o)
             self.high: float = float(h)
             self.low: float = float(l)
